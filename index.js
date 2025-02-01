@@ -8,7 +8,7 @@ import { extension_settings, getContext } from "../../../extensions.js";
 import { chat, saveSettingsDebounced } from "../../../../script.js";
 
 // Keep track of where your extension is located, name should match repo name
-const extensionName = "st-function-ui";
+const extensionName = "sillytavern-inventory";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
 function refreshInventory() {
