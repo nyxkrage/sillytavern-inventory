@@ -119,6 +119,8 @@ function equipItem(args) {
 
     // Equip the item for the wearer
     inventory[args.wearer].equipped[args.id] = inventory[args.wearer].items[args.id];
+    // biome-ignore lint/performance/noDelete: <explanation>
+    delete inventory[args.wearer].equipped[args.id].count;
     actionDescription = `${wearer} equipped ${inventory[args.wearer].items[args.id].name} from ${owner}'s inventory. It is now in ${wearer}'s inventory and equipped.`;
   } else {
     actionDescription = `${owner} does not have ${args.id} in their inventory and create was not enabled. Nothing was changed.`
@@ -341,28 +343,10 @@ jQuery(async () => {
                 items: {
                   type: 'object',
                   description: 'Items owned by the character',
-                  patternProperties: {
-                    "^.*$": {
-                      type: 'object',
-                      properties: {
-                        name: { type: 'string' },
-                        count: { type: 'number' }
-                      }
-                    }
-                  }
                 },
                 equipped: {
                   type: 'object',
                   description: 'Items currently equipped by the character',
-                  patternProperties: {
-                    "^.*$": {
-                      type: 'object',
-                      properties: {
-                        name: { type: 'string' },
-                        count: { type: 'number' }
-                      }
-                    }
-                  }
                 }
               },
               required: ['items', 'equipped']
@@ -373,28 +357,10 @@ jQuery(async () => {
                 items: {
                   type: 'object',
                   description: 'Items owned by the user',
-                  patternProperties: {
-                    "^.*$": {
-                      type: 'object',
-                      properties: {
-                        name: { type: 'string' },
-                        count: { type: 'number' }
-                      }
-                    }
-                  }
                 },
                 equipped: {
                   type: 'object',
                   description: 'Items currently equipped by the user',
-                  patternProperties: {
-                    "^.*$": {
-                      type: 'object',
-                      properties: {
-                        name: { type: 'string' },
-                        count: { type: 'number' }
-                      }
-                    }
-                  }
                 }
               },
               required: ['items', 'equipped']
@@ -417,12 +383,19 @@ jQuery(async () => {
 });
 
 /*
-inventory: {
-  "char": {
-    "inventory": {}
-    "equipped": {}
-  }
-  "user": {
+{
+  "char" | "user": {
+    "inventory": {
+      "item_id": {
+        "name": "human readable name",
+        "count": 1234
+      }
+    }
+    "equipped": {
+      "item_id": {
+        "name": "human readable name",
+      }
+    }
   }
 }
 */
