@@ -160,8 +160,8 @@ jQuery(async () => {
   const settingsHtml = await $.get(`${extensionFolderPath}/example.html`);
   $("#extensions_settings").append(settingsHtml);
 
-  $("#inventory_refresh").on("input", refreshInventory);
-  $("#inventory_set").on("input", setInventory);
+  $("#inventory_refresh").on("click", refreshInventory);
+  $("#inventory_set").on("click", setInventory);
 
   context.eventSource.on(context.eventTypes.CHAT_CHANGED, () => {
     getContext().chatMetadata.inventory = {
