@@ -322,6 +322,98 @@ jQuery(async () => {
     shouldRegister: () => true,
     stealth: false,
   });
+
+  context.registerFunctionTool({
+    name: "setInventory",
+    displayName: "Set Inventory Directly",
+    description: "Directly sets the entire inventory structure. Use this when multiple items are missing or need updating",
+    parameters: {
+      $schema: 'http://json-schema.org/draft-04/schema#',
+      type: 'object',
+      properties: {
+        inventory: {
+          type: 'object',
+          description: 'The complete inventory object to set',
+          properties: {
+            char: {
+              type: 'object',
+              properties: {
+                items: {
+                  type: 'object',
+                  description: 'Items owned by the character',
+                  patternProperties: {
+                    "^.*$": {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        count: { type: 'number' }
+                      }
+                    }
+                  }
+                },
+                equipped: {
+                  type: 'object',
+                  description: 'Items currently equipped by the character',
+                  patternProperties: {
+                    "^.*$": {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        count: { type: 'number' }
+                      }
+                    }
+                  }
+                }
+              },
+              required: ['items', 'equipped']
+            },
+            user: {
+              type: 'object',
+              properties: {
+                items: {
+                  type: 'object',
+                  description: 'Items owned by the user',
+                  patternProperties: {
+                    "^.*$": {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        count: { type: 'number' }
+                      }
+                    }
+                  }
+                },
+                equipped: {
+                  type: 'object',
+                  description: 'Items currently equipped by the user',
+                  patternProperties: {
+                    "^.*$": {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        count: { type: 'number' }
+                      }
+                    }
+                  }
+                }
+              },
+              required: ['items', 'equipped']
+            }
+          },
+          required: ['char', 'user']
+        }
+      },
+      required: ['inventory'],
+    },
+    action: (args) => {
+      getContext().chatMetadata.inventory = args.inventory;
+      return "Inventory has been completely replaced with the new structure";
+    },
+    formatMessage: () => "Updated entire inventory structure",
+    shouldRegister: () => true,
+    stealth: false,
+  });
+
 });
 
 /*
