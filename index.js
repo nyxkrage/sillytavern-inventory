@@ -12,14 +12,12 @@ const extensionName = "sillytavern-inventory";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
 function refreshInventory() {
-  $("#inventory_viewer").val(
-    JSON.stringify(getContext().chatMetadata.inventory || {}, null, 2),
-  );
-  saveSettingsDebounced();
+  document.getElementById("inventory_viewer").value = JSON.stringify(getContext().chatMetadata.inventory || {}, null, 2)
+
 }
 
 function setInventory() {
-  getContext().chatMetadata.inventory = JSON.parse($("#inventory_viewer").val());
+  getContext().chatMetadata.inventory = JSON.parse(document.getElementById("inventory_viewer").value)
   saveSettingsDebounced();
 }
 
@@ -160,8 +158,8 @@ jQuery(async () => {
   const settingsHtml = await $.get(`${extensionFolderPath}/example.html`);
   $("#extensions_settings").append(settingsHtml);
 
-  $("#inventory_refresh").on("click", refreshInventory);
-  $("#inventory_set").on("click", setInventory);
+  document.getElementById("inventory_refresh").addEventListener("click", refreshInventory)
+  document.getElementById("inventory_set").addEventListener("click", setInventory)
 
   context.eventSource.on(context.eventTypes.CHAT_CHANGED, () => {
     getContext().chatMetadata.inventory = {
