@@ -119,8 +119,6 @@ function equipItem(args) {
 
     // Equip the item for the wearer
     inventory[args.wearer].equipped[args.id] = inventory[args.wearer].items[args.id];
-    // biome-ignore lint/performance/noDelete: <explanation>
-    delete inventory[args.wearer].equipped[args.id].count;
     actionDescription = `${wearer} equipped ${inventory[args.wearer].items[args.id].name} from ${owner}'s inventory. It is now in ${wearer}'s inventory and equipped.`;
   } else {
     actionDescription = `${owner} does not have ${args.id} in their inventory and create was not enabled. Nothing was changed.`
@@ -341,12 +339,29 @@ jQuery(async () => {
               type: 'object',
               properties: {
                 items: {
-                  type: 'object',
+                  type: 'array',
                   description: 'Items owned by the character',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      name: { type: 'string' },
+                      count: { type: 'number' }
+                    },
+                    required: ['id', 'name', 'count']
+                  }
                 },
                 equipped: {
-                  type: 'object',
+                  type: 'array',
                   description: 'Items currently equipped by the character',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      name: { type: 'string' },
+                    },
+                    required: ['id', 'name']
+                  }
                 }
               },
               required: ['items', 'equipped']
@@ -355,14 +370,29 @@ jQuery(async () => {
               type: 'object',
               properties: {
                 items: {
-                  type: 'object',
-                  properties: {},
+                  type: 'array',
                   description: 'Items owned by the user',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      name: { type: 'string' },
+                      count: { type: 'number' }
+                    },
+                    required: ['id', 'name', 'count']
+                  }
                 },
                 equipped: {
-                  type: 'object',
-                  properties: {},
+                  type: 'array',
                   description: 'Items currently equipped by the user',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      name: { type: 'string' },
+                    },
+                    required: ['id', 'name']
+                  }
                 }
               },
               required: ['items', 'equipped']
@@ -374,7 +404,18 @@ jQuery(async () => {
       required: ['inventory'],
     },
     action: (args) => {
-      getContext().chatMetadata.inventory = args.inventory;
+      const modifiedInventory = {
+        char: {
+          items: Object.fromEntries(args.inventory.char.items.map(item => [item.id, { name: item.name, count: item.count }])),
+          equipped: Object.fromEntries(args.inventory.char.equipped.map(item => [item.id, { name: item.name }]))
+        },
+        user: {
+          items: Object.fromEntries(args.inventory.user.items.map(item => [item.id, { name: item.name, count: item.count }])),
+          equipped: Object.fromEntries(args.inventory.user.equipped.map(item => [item.id, { name: item.name }]))
+        }
+      };
+
+      getContext().chatMetadata.inventory = modifiedInventory;
       return "Inventory has been completely replaced with the new structure";
     },
     formatMessage: () => "Updated entire inventory structure",
@@ -385,19 +426,12 @@ jQuery(async () => {
 });
 
 /*
-{
-  "char" | "user": {
-    "inventory": {
-      "item_id": {
-        "name": "human readable name",
-        "count": 1234
-      }
-    }
-    "equipped": {
-      "item_id": {
-        "name": "human readable name",
-      }
-    }
+inventory: {
+  "char": {
+    "inventory": {}
+    "equipped": {}
+  }
+  "user": {
   }
 }
 */
