@@ -356,10 +356,12 @@ jQuery(async () => {
               properties: {
                 items: {
                   type: 'object',
+                  properties: {},
                   description: 'Items owned by the user',
                 },
                 equipped: {
                   type: 'object',
+                  properties: {},
                   description: 'Items currently equipped by the user',
                 }
               },
