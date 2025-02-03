@@ -6,432 +6,244 @@ import { extension_settings, getContext } from "../../../extensions.js";
 
 //You'll likely need to import some other functions from the main script
 import { chat, saveSettingsDebounced } from "../../../../script.js";
+import { arraysEqual } from "../../../utils.js";
 
 // Keep track of where your extension is located, name should match repo name
 const extensionName = "sillytavern-inventory";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
-function refreshInventory() {
+function refresh() {
   document.getElementById("inventory_viewer").value = JSON.stringify(getContext().chatMetadata.inventory || {}, null, 2)
+  document.getElementById("stats_viewer").value = JSON.stringify(getContext().chatMetadata.stats || {}, null, 2)
 
 }
 
-function setInventory() {
+function update() {
   getContext().chatMetadata.inventory = JSON.parse(document.getElementById("inventory_viewer").value)
+  getContext().chatMetadata.stats = JSON.parse(document.getElementById("stats_viewer").value)
+
   saveSettingsDebounced();
 }
-
-function addItemToInventory(args) {
-  const context = getContext()
-  const inventory = context.chatMetadata.inventory;
-  const owner = args.owner === "char" ? context.name2 : context.name1
-  let actionDescription = '';
-
-  if (!inventory[args.owner]) {
-    inventory[args.owner] = {
-      items: {},
-      equipped: {}
-    }
-  }
-
-  if (inventory[args.owner].items[args.id]) {
-    inventory[args.owner].items[args.id].count += args.count
-  } else {
-    inventory[args.owner].items[args.id] = {
-      name: args.name,
-      count: args.count
-    }
-  }
-  actionDescription = `Added ${args.count} ${args.name} to ${owner}'s inventory. They now have ${inventory[args.owner].items[args.id].count} total.`
-
-  getContext().chatMetadata = inventory
-  return actionDescription
-}
-
-function removeItemFromInventory(args) {
-  const context = getContext()
-  const inventory = context.chatMetadata.inventory;
-  const owner = args.owner === "char" ? context.name2 : context.name1
-  let actionDescription = '';
-
-  if (!inventory[args.owner]) {
-    inventory[args.owner] = {
-      items: {},
-      equipped: {}
-    }
-  }
-
-  if (inventory[args.owner].items[args.id]) {
-    inventory[args.owner].items[args.id].count -= args.count
-    if (inventory[args.owner].items[args.id].count <= 0) {
-      delete inventory[args.owner].items[args.id]
-      actionDescription = `Removed all ${args.name} from ${owner}'s inventory.`
-    } else {
-      actionDescription = `Removed ${args.count} ${args.item} from ${owner}'s inventory`
-    }
-  } else {
-    actionDescription = `${owner} does not have any ${args.name} in their inventory. Nothing was changed.`
-  }
-
-  getContext().chatMetadata = inventory
-  return actionDescription
-}
-
-function equipItem(args) {
-  const context = getContext()
-  const inventory = context.chatMetadata.inventory;
-  const owner = args.owner === "char" ? context.name2 : context.name1
-  const wearer = args.wearer === "char" ? context.name2 : context.name1
-  let actionDescription = '';
-
-  if (!inventory[args.owner]) {
-    inventory[args.owner] = {
-      items: {},
-      equipped: {}
-    }
-  }
-
-  if (inventory[args.owner].items[args.id] || args.create) {
-    if (args.create && !inventory[args.owner].items[args.id]) {
-      inventory[args.owner].items[args.id] = {
-        name: args.id,
-        count: 1
-      }
-    }
-    // Transfer one item from owner to wearer
-    if (args.owner !== args.wearer) {
-      // Remove one item from owner
-      inventory[args.owner].items[args.id].count -= 1;
-      if (inventory[args.owner].items[args.id].count <= 0) {
-        delete inventory[args.owner].items[args.id];
-      }
-
-      // Add one item to wearer
-      if (!inventory[args.wearer].items[args.id]) {
-        inventory[args.wearer].items[args.id] = {
-          name: inventory[args.owner].items[args.id].name,
-          count: 1
-        }
-      } else {
-        inventory[args.wearer].items[args.id].count += 1;
-      }
-    }
-
-    // Equip the item for the wearer
-    inventory[args.wearer].equipped[args.id] = inventory[args.wearer].items[args.id];
-    actionDescription = `${wearer} equipped ${inventory[args.wearer].items[args.id].name} from ${owner}'s inventory. It is now in ${wearer}'s inventory and equipped.`;
-  } else {
-    actionDescription = `${owner} does not have ${args.id} in their inventory and create was not enabled. Nothing was changed.`
-  }
-
-  getContext().chatMetadata = inventory
-  return actionDescription
-}
-
-function unequipItem(args) {
-  const context = getContext()
-  const inventory = context.chatMetadata.inventory;
-  const owner = args.owner === "char" ? context.name2 : context.name1
-  let actionDescription = '';
-
-  if (!inventory[args.owner]) {
-    inventory[args.owner] = {
-      items: {},
-      equipped: {}
-    }
-  }
-
-  if (inventory[args.owner].equipped[args.id]) {
-    delete inventory[args.owner].equipped[args.id];
-    actionDescription = `${owner} unequipped ${args.id}`;
-  } else {
-    actionDescription = `${owner} does not have ${args.id} equipped. Nothing was changed.`;
-  }
-
-  getContext().chatMetadata = inventory
-  return actionDescription
-}
-
 
 jQuery(async () => {
   const context = getContext();
   const settingsHtml = await $.get(`${extensionFolderPath}/example.html`);
   $("#extensions_settings").append(settingsHtml);
 
-  document.getElementById("inventory_refresh").addEventListener("click", refreshInventory)
-  document.getElementById("inventory_set").addEventListener("click", setInventory)
+  document.getElementById("inventory_refresh").addEventListener("click", refresh)
+  document.getElementById("inventory_set").addEventListener("click", update)
 
   context.eventSource.on(context.eventTypes.CHAT_CHANGED, () => {
-    getContext().chatMetadata.inventory = {
-      char: {
-        items: {},
-        equipped: {},
-      },
-      user: {
-        items: {},
-        equipped: {},
-      }
-    };
+    getContext().chatMetadata.inventory = {};
+    getContext().chatMetadata.stats = {};
   });
 
   context.registerMacro("inventory", () => {
     return JSON.stringify(getContext().chatMetadata.inventory || {}, null, 2);
   });
 
-  context.registerFunctionTool({
-    name: "addItemToInventory",
-    displayName: "Add Item to Inventory",
-    description: "Adds an item to the characters",
-    parameters: {
-      $schema: 'http://json-schema.org/draft-04/schema#',
-      type: 'object',
-      properties: {
-        owner: {
-          type: 'string',
-          enum: ["char", "user"],
-          description: 'Who should the item should be given to',
-        },
-        id: {
-          type: 'string',
-          description: 'camelCase id of the item',
-        },
-        name: {
-          type: 'string',
-          description: 'The proper full name of the item in singular form',
-        },
-        count: {
-          type: 'number',
-          description: 'The number of the item that should be given to owner',
-        },
-      },
-      required: [
-        'owner', 'id', 'name', 'count',
-      ],
-    },
-    action: addItemToInventory,
-    formatMessage: (args) => {
-      const context = getContext()
-      return `Added ${args.name} to ${args.owner === "char" ? context.name2 : context.name1}'s inventory`
-    },
-    shouldRegister: () => true,
-    stealth: false,
+
+  context.registerMacro("stats", () => {
+    return JSON.stringify(getContext().chatMetadata.stats || {}, null, 2);
   });
 
-  context.registerFunctionTool({
-    name: "removeItemToInventory",
-    displayName: "Remove Item to Inventory",
-    description: "Removes an item to the characters",
-    parameters: {
-      $schema: 'http://json-schema.org/draft-04/schema#',
-      type: 'object',
-      properties: {
-        owner: {
-          type: 'string',
-          enum: ["char", "user"],
-          description: 'Who should the item should be taken from',
-        },
-        id: {
-          type: 'string',
-          description: 'camelCase id of the item',
-        },
-        count: {
-          type: 'number',
-          description: 'The number of the item that should be taken from the owner',
-        },
-      },
-      required: [
-        'owner', 'id', 'count',
-      ],
-    },
-    action: (args) => removeItemFromInventory,
-    formatMessage: (args) => {
-      const context = getContext()
-      return `Removed ${args.name} from ${args.owner === "char" ? context.name2 : context.name1}'s inventory`
-    },
-    shouldRegister: () => true,
-    stealth: false,
-  });
+  function validateCommands(args) {
+    const validCommands = ['addItem', 'removeItem', 'updateItem', 'equipItem', 'unequipItem', 'setStat', 'updateStat'];
+    const errors = [];
 
-  context.registerFunctionTool({
-    name: "equipItem",
-    displayName: "Equip Item",
-    description: "Equips an item on a person",
-    parameters: {
-      $schema: 'http://json-schema.org/draft-04/schema#',
-      type: 'object',
-      properties: {
-        owner: {
-          type: 'string',
-          enum: ["char", "user"],
-          description: 'Who has the item to be equipped in their inventory',
-        },
-        wearer: {
-          type: 'string',
-          enum: ["char", "user"],
-          description: 'Who should equip the item',
-        },
-        id: {
-          type: 'string',
-          description: 'camelCase id of the item',
-        },
-        create: {
-          type: "boolean",
-          description: "Whether the item should be created if it does not exist in the owners inventory"
+    if (!Array.isArray(args.commands)) {
+      errors.push('Commands must be provided as an array');
+    } else {
+      for (const command of args.commands) {
+        if (!command.cmd || !validCommands.includes(command.cmd)) {
+          errors.push(`Invalid command: ${command.cmd}`);
+          continue;
         }
-      },
-      required: [
-        'owner', 'id',
-      ],
-    },
-    action: (args) => equipItem,
-    formatMessage: (args) => {
-      const context = getContext()
-      return `Equipped ${args.name} for ${args.owner === "char" ? context.name2 : context.name1}`
-    },
-    shouldRegister: () => true,
-    stealth: false,
-  });
+        if (!command.character) {
+          errors.push('Character must be specified for all commands');
+          continue;
+        }
+        if (['addItem', 'removeItem', 'updateItem', 'equipItem', 'unequipItem'].includes(command.cmd)) {
+          if (!command.item?.id) {
+            errors.push(`Item ID required for ${command.cmd}`);
+            continue;
+          }
+        }
+        if (['setStat', 'updateStat'].includes(command.cmd)) {
+          if (!command.stat?.name) {
+            errors.push('Stat name required for stat commands');
+          }
+        }
+      }
+    }
 
-  context.registerFunctionTool({
-    name: "unequipItem",
-    displayName: "Uneuip Item",
-    description: "Unequips an item on a person",
-    parameters: {
-      $schema: 'http://json-schema.org/draft-04/schema#',
-      type: 'object',
-      properties: {
-        owner: {
-          type: 'string',
-          enum: ["char", "user"],
-          description: 'Who should unequip the item',
-        },
-        id: {
-          type: 'string',
-          description: 'camelCase id of the item',
-        },
-      },
-      required: [
-        'owner', 'id',
-      ],
-    },
-    action: (args) => unequipItem,
-    formatMessage: (args) => {
-      const context = getContext()
-      return `Unequipped ${args.name} for ${args.owner === "char" ? context.name2 : context.name1}`
-    },
-    shouldRegister: () => true,
-    stealth: false,
-  });
+    return errors;
+  }
 
-  context.registerFunctionTool({
-    name: "setInventory",
-    displayName: "Set Inventory Directly",
-    description: "Directly sets the entire inventory structure. Use this when multiple items are missing or need updating",
-    parameters: {
-      $schema: 'http://json-schema.org/draft-04/schema#',
-      type: 'object',
-      properties: {
-        inventory: {
-          type: 'object',
-          description: 'The complete inventory object to set',
-          properties: {
-            char: {
-              type: 'object',
-              properties: {
-                items: {
-                  type: 'array',
-                  description: 'Items owned by the character',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'string' },
-                      name: { type: 'string' },
-                      count: { type: 'number' }
-                    },
-                    required: ['id', 'name', 'count']
-                  }
-                },
-                equipped: {
-                  type: 'array',
-                  description: 'Items currently equipped by the character',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'string' },
-                      name: { type: 'string' },
-                    },
-                    required: ['id', 'name']
-                  }
-                }
-              },
-              required: ['items', 'equipped']
-            },
-            user: {
-              type: 'object',
-              properties: {
-                items: {
-                  type: 'array',
-                  description: 'Items owned by the user',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'string' },
-                      name: { type: 'string' },
-                      count: { type: 'number' }
-                    },
-                    required: ['id', 'name', 'count']
-                  }
-                },
-                equipped: {
-                  type: 'array',
-                  description: 'Items currently equipped by the user',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'string' },
-                      name: { type: 'string' },
-                    },
-                    required: ['id', 'name']
-                  }
-                }
-              },
-              required: ['items', 'equipped']
+  function handleCommands(args) {
+    const context = getContext();
+
+    const errors = validateCommands(args);
+    if (errors.length > 0) {
+      throw new Error(errors.join('\n'));
+    }
+
+    for (const command of args.commands) {
+      const characterInventory = context.chatMetadata.inventory[command.character] || { inventory: {}, equipped: [] };
+      const characterStats = context.chatMetadata.stats[command.character] || {};
+
+      switch (command.cmd) {
+        case 'addItem':
+          if (!characterInventory.inventory[command.item.id]) {
+            characterInventory.inventory[command.item.id] = command.item;
+          } else {
+            characterInventory.inventory[command.item.id].count += command.item.count;
+          }
+          break;
+
+        case 'removeItem':
+          if (characterInventory.inventory[command.item.id]) {
+            characterInventory.inventory[command.item.id].count -= command.item.count;
+            if (characterInventory.inventory[command.item.id].count <= 0) {
+              delete characterInventory.inventory[command.item.id];
             }
-          },
-          required: ['char', 'user']
-        }
-      },
-      required: ['inventory'],
-    },
-    action: (args) => {
-      const modifiedInventory = {
-        char: {
-          items: Object.fromEntries(args.inventory.char.items.map(item => [item.id, { name: item.name, count: item.count }])),
-          equipped: Object.fromEntries(args.inventory.char.equipped.map(item => [item.id, { name: item.name }]))
-        },
-        user: {
-          items: Object.fromEntries(args.inventory.user.items.map(item => [item.id, { name: item.name, count: item.count }])),
-          equipped: Object.fromEntries(args.inventory.user.equipped.map(item => [item.id, { name: item.name }]))
-        }
-      };
+          }
+          break;
 
-      getContext().chatMetadata.inventory = modifiedInventory;
-      return "Inventory has been completely replaced with the new structure";
+        case 'updateItem':
+          if (characterInventory.inventory[command.item.id]) {
+            characterInventory.inventory[command.item.id] = {
+              ...characterInventory.inventory[command.item.id],
+              ...command.item
+            };
+          }
+          break;
+
+        case 'equipItem':
+          if (!characterInventory.equipped.includes(command.item.id)) {
+            characterInventory.equipped.push(command.item.id);
+          }
+          break;
+
+        case 'unequipItem':
+          characterInventory.equipped = characterInventory.equipped.filter(id => id !== command.item.id);
+          break;
+
+        case 'setStat':
+          characterStats[command.stat.name] = {
+            description: command.stat.description,
+            value: command.stat.value
+          };
+          break;
+        case 'updateStat': {
+          if (command.stat.value !== undefined) {
+            characterStats[command.stat.name].value = command.stat.value;
+          } else if (command.stat.change !== undefined && typeof characterStats[command.stat.name].value === 'number') {
+            characterStats[command.stat.name].value += command.stat.change;
+          }
+          if (command.stat.description) {
+            characterStats[command.stat.name].description = command.stat.description;
+          }
+          break;
+        }
+      }
+
+      context.chatMetadata.inventory[command.character] = characterInventory;
+      context.chatMetadata.stats[command.character] = characterStats;
+    }
+
+    saveSettingsDebounced();
+    return "Commands executed successfully";
+  }
+
+  // Register function tool for inventory commands
+  context.registerFunctionTool({
+    name: "inventoryCommand",
+    displayName: "Modify Inventory",
+    description: "Modify inventory or stats with commands",
+    parameters: {
+      $schema: 'http://json-schema.org/draft-04/schema#',
+      type: 'object',
+      properties: {
+        commands: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              cmd: {
+                type: 'string',
+                enum: ['addItem', 'removeItem', 'updateItem', 'equipItem', 'unequipItem', 'setStat', 'updateStat'],
+                description: 'Command to execute',
+              },
+              characters: {
+                type: 'string',
+                description: 'Who owns the item/stat',
+              },
+              item: {
+                type: 'object',
+                properties: {
+                  id: {
+                    type: 'string',
+                    description: 'Item ID for commands that reference existing items',
+                  },
+                  name: {
+                    type: 'string',
+                    description: 'Display name of the item',
+                  },
+                  description: {
+                    type: 'string',
+                    description: 'Description of the item',
+                  },
+                  count: {
+                    type: 'number',
+                    description: 'Quantity of the item to be added/removed. Only applicable for addItem, removeItem or updateItem',
+                    minimum: 0,
+                  },
+                },
+                description: 'Item data, this is only applicable for the addItem, removeItem, updateItem, equipItem and uneuqipItem commands. For equipItem and unequipItem, only the id is required and the item must already exist in the inventory or must be added as well.',
+              },
+              stat: {
+                type: 'object',
+                properties: {
+                  name: {
+                    type: 'string',
+                    description: 'Name of stat to modify',
+                  },
+                  description: {
+                    type: 'string',
+                    description: 'Description of the status effect'
+                  },
+                  value: {
+                    type: ['number', 'string'],
+                    description: 'Direct value to set stat to, this is mutally exclusive with change',
+                  },
+                  change: {
+                    type: 'number',
+                    description: 'Amount to increment/decrement stat by, if the stat/status is a string, this does nothing, this is mutally exclusive with value',
+                  }
+                },
+                description: 'The stat to set/update, this is only applicable for the setStat and updateStat commands'
+              }
+            },
+            required: ['cmd', 'character'],
+          }
+        },
+      },
     },
-    formatMessage: () => "Updated entire inventory structure",
+    action: handleCommands,
+    formatMessage: (args) => {
+      return `Executed inventory commands: ${args.commands}`;
+    },
     shouldRegister: () => true,
     stealth: false,
   });
-
 });
 
 /*
 inventory: {
-  "char": {
+  "name": {
     "inventory": {}
-    "equipped": {}
-  }
-  "user": {
+    "equipped": []
   }
 }
 */
