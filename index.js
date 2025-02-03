@@ -175,7 +175,7 @@ jQuery(async () => {
                 enum: ['addItem', 'removeItem', 'updateItem', 'equipItem', 'unequipItem', 'setStat', 'updateStat'],
                 description: 'Command to execute',
               },
-              characters: {
+              character: {
                 type: 'string',
                 description: 'Who owns the item/stat',
               },
