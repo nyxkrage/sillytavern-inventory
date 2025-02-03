@@ -214,12 +214,12 @@ jQuery(async () => {
                     description: 'Description of the status effect'
                   },
                   value: {
-                    type: ['number', 'string'],
+                    type: 'number',
                     description: 'Direct value to set stat to, this is mutally exclusive with change',
                   },
                   change: {
                     type: 'number',
-                    description: 'Amount to increment/decrement stat by, if the stat/status is a string, this does nothing, this is mutally exclusive with value',
+                    description: 'Amount to increment/decrement stat by. This is mutally exclusive with value',
                   }
                 },
                 description: 'The stat to set/update, this is only applicable for the setStat and updateStat commands'
