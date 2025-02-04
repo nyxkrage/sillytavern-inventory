@@ -7,6 +7,8 @@ import { extension_settings, getContext } from "../../../extensions.js";
 //You'll likely need to import some other functions from the main script
 import { chat, saveSettingsDebounced } from "../../../../script.js";
 import { arraysEqual } from "../../../utils.js";
+import { SlashCommand } from "../../../slash-commands/SlashCommand.js";
+import { ARGUMENT_TYPE, SlashCommandArgument } from "../../../slash-commands/SlashCommandArgument.js";
 
 // Keep track of where your extension is located, name should match repo name
 const extensionName = "sillytavern-inventory";
@@ -156,10 +158,26 @@ jQuery(async () => {
     return "Commands executed successfully";
   }
 
+  context.SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+    'name': 'inventoryCommands',
+    callback: (namedArgs, unnamedArgs) => {
+      const data = JSON.parse(unnamedArgs);
+      return handleCommands(data);
+    },
+    returns: 'A list of completed commands or a list of errors',
+    unnamedArgumentList: [
+      SlashCommandArgument.fromProps({
+        'description': 'the commands json',
+        typeList: ARGUMENT_TYPE.STRING,
+        isRequired: true,
+      })
+    ]
+  }))
+
   // Register function tool for inventory commands
   context.registerFunctionTool({
-    name: "inventoryCommand",
-    displayName: "Modify Inventory",
+    name: "inventoryCommands",
+    displayName: "Modify Inventory and stats",
     description: "Modify inventory or stats with commands",
     parameters: {
       $schema: 'http://json-schema.org/draft-04/schema#',
